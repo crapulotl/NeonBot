@@ -94,8 +94,8 @@ client.on('messageCreate', message => {
 
             if ((jsonData[author]['money'] >= amountPayedn) && (amountPayedn > 0)) {
 
-                jsonData[author]['money'] = parseInt(jsonData[author]['money']) - amountPayedn;
-                jsonData[recipient]['money'] = parseInt(jsonData[recipient]['money']) + amountPayedn;
+                jsonData[author]['money'] = parseInt(jsonData[author]['money'] - amountPayedn);
+                jsonData[recipient]['money'] = parseInt(jsonData[recipient]['money'] + amountPayedn);
 
                 updateRecord('record', '.json', JSON.stringify(jsonData));
 
