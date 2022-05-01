@@ -1,8 +1,6 @@
 const { Client, Intents } = require('discord.js');
 const { token } = require('./config.json');
 const fs = require('fs');
-const { stringify } = require('querystring');
-const { time } = require('console');
 
 let author = '';
 let command = '';
@@ -30,7 +28,7 @@ function calcAmount(inputAmount) {
     for (let i = 0; i < inputAmount.length; i++) {
         if (inputAmount[i] === 'n') {
             let value = parseFloat(inputAmount.substring(0, i));
-            value = Math.round((value + Number.EPSILON) * 100) / 100;
+            value = Math.round(value);
 
             amountPayedn = value;
             amountPayed = value / 100;
@@ -39,7 +37,7 @@ function calcAmount(inputAmount) {
         }
         else if (inputAmount[i] === 'N') {
             let value = parseFloat(inputAmount.substring(0, i));
-            value = Math.round((value + Number.EPSILON) * 100) / 100;
+            value = Math.round(value);
 
             amountPayedn = value * 100;
             amountPayed = value;
