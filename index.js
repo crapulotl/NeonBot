@@ -26,6 +26,11 @@ function updateRecord(fileName, fileExt = '.json', inputJson) {
 }
 
 function calcAmount(inputAmount) {
+    /*let neonSign = inputAmount[inputAmount.length - 1]
+    if (!(neonSign === 'n') && !(neonSign === 'N')) { return false}*/
+
+    console.log(inputAmount.length)
+
     for (let i = 0; i < inputAmount.length; i++) {
         if (inputAmount[i] === 'n') {
             let value = parseFloat(inputAmount.substring(0, i));
@@ -38,7 +43,7 @@ function calcAmount(inputAmount) {
         }
         else if (inputAmount[i] === 'N') {
             let value = parseFloat(inputAmount.substring(0, i));
-            value = Math.round(value);
+            value = Math.round(value * 100) / 100;
 
             amountPayedn = value * 100;
             amountPayed = value;
@@ -53,14 +58,15 @@ function calcAmount(inputAmount) {
 }
 
 function transfer(jsonData, author, item, recipient, quantity) {
+    quantity = parseInt(quantity);
+
     if (!(jsonData[author][item] >= 0)) { return false }
     if (!(jsonData[recipient][item] >= 0)) { jsonData[recipient][item] = 0 }
 
     try {
         if (jsonData[author][item] >= quantity) {
-
-            jsonData[author][item] = parseInt(jsonData[author][item] - quantity);
-            jsonData[recipient][item] = parseInt(jsonData[recipient][item] + quantity);
+            jsonData[author][item] = parseInt(jsonData[author][item]) - quantity;
+            jsonData[recipient][item] = parseInt(jsonData[recipient][item]) + quantity;
 
             updateRecord('record', '.json', JSON.stringify(jsonData));
             return true
@@ -87,10 +93,15 @@ function checkKeyValidity(inputKey, inputValue) {
     let jsonData = readRecord('record')
 
     try {
-        let temp = jsonData[inputKey][inputValue]
+        if (!(jsonData[inputKey][inputValue] >= 0)) {
+            jsonData[inputKey][inputValue] = 0;
+            updateRecord('record', '.json', JSON.stringify(jsonData))
+        }
         return true
-    } catch (error) {
+    }
+    catch (error) {
         jsonData[inputKey] = {};
+        jsonData[inputKey][inputValue] = 0;
         updateRecord('record', '.json', JSON.stringify(jsonData))
         return false
     }
@@ -103,9 +114,23 @@ client.once('ready', () => {
 client.on('messageCreate', message => {
     if (!message.content.startsWith('+')) { return }
 
+    let author = message.author.toString();
+    let jsonData = readRecord('record');
+    for (let key in jsonData[author]) {
+        try {
+            if (jsonData[author][key] === 0){
+                delete jsonData[author][key]
+            }
+        } 
+        catch (error) {
+            console.log(error)
+        }
+    }
+    updateRecord('record', '.json', JSON.stringify(jsonData))
+
     try {
         msg = message.content.split(' ');
-        command = msg[0].substring(1);
+        command = msg[0].substring(1).toLowerCase();
         jsonDataOld = readRecord('record');
 
         try {
@@ -123,17 +148,21 @@ client.on('messageCreate', message => {
             return
         }
 
-        if (command === 'pay') {
+        if (command == 'pay') {
+            /*if (!(calcAmount(msg[2]))) { 
+                message.channel.send('Please add an "n" after the amount, type +help for more info');
+                return
+            }*/
             calcAmount(msg[2]);
 
             let recipient = msg[1];
             author = message.author.toString();
 
-            checkKeyValidity(author, 'money');
-            checkKeyValidity(recipient, 'money');
+            checkKeyValidity(author, 'neons');
+            checkKeyValidity(recipient, 'neons');
             let jsonData = readRecord('record');
 
-            if (amountPayedn > 0 && transfer(jsonData, author, 'money', recipient, amountPayedn)) {
+            if (amountPayedn > 0 && transfer(jsonData, author, 'neons', recipient, amountPayedn)) {
                 if (author === recipient) { message.channel.send(`Nice try ${message.author.username}`); }
                 else { message.channel.send(`You just payed ${recipient} ${amountPayed}N`); }
 
@@ -144,32 +173,63 @@ client.on('messageCreate', message => {
             }
         }
 
-        if (command === 'balance') {
-            let jsonData = readRecord('record');
+        if (command == 'balance') {
             let author = message.author.toString();
             let item = message.content.split('+balance ')[1];
 
             try {
-                if (item === 'money') {
-                    message.channel.send(`${author}. Your balance is: ${jsonData[author]['money'] / 100} Neons`)
-                } else {
-                    if (!(jsonData[author][item] === undefined)) {
-                        message.channel.send(`${author}. You have ${jsonData[author][item]} ${item}`)
-                    } else { message.channel.send(`${author}. You have no ${item}`) }
+                item = item.toLowerCase();
+            } catch (error) {
+                item = null;
+            }
+
+            if (item === 'all') {
+                let tempData = readRecord('record');
+
+                try {
+                    msg = JSON.stringify(tempData[author], null, 1)
+                    msg = msg.replace(/"/g, '').replace(/{/g, '').replace(/}/g, '').replace(/,/g, '')
+                    message.channel.send(`${author}. Here is your summary:\n \`\`\`\n${msg}\n \`\`\``)
+
+                } catch (error) {
+                    message.channel.send(`${author}. Here is your summary:\n\`\`\`\n:c\n\`\`\``)
                 }
+                return
+            }
+
+            if (item === null || item === 'money') { item = 'neons' }
+
+            checkKeyValidity(author, item);
+            let jsonData = readRecord('record');
+
+            try {
+                if (item === 'neons') {
+                    message.channel.send(`${author}. Your balance is: ${jsonData[author]['neons'] / 100} Neons`)
+                } else { message.channel.send(`${author}. You have ${jsonData[author][item]} ${item}`) }
             }
             catch (error) {
-                message.channel.send(`${author}. You have no ${item.substring}`);
+                message.channel.send(`${author}. You have no ${item}`);
                 console.log(error);
                 return
             }
         }
 
-        if (command === 'give') {
+        if (command == 'give') {
             let author = message.author.toString();
             let recipient = msg[1];
-            let quantity = msg[2];
-            let item = message.content.split(`+give ${recipient} ${quantity} `)[1].substring(0);
+            let quantity = parseInt(msg[2]);
+            let item = message.content.split(`+give ${recipient} ${quantity} `)[1]
+
+            try {
+                item = item.toLowerCase();
+            } catch (error) {
+                return
+            }
+
+            if (item === 'neons') {
+                message.channel.send('Please use the "pay" command to transfer currency')
+                return
+            }
 
             checkKeyValidity(author, item);
             checkKeyValidity(recipient, item);
@@ -192,6 +252,31 @@ client.on('messageCreate', message => {
                 message.channel.send(`Sorry ${message.author.username}, something seems to have went wrong`);
             }
         }
+
+        if (command === 'add') {
+            let author = message.author.toString();
+            let quantity = parseInt(msg[1]);
+            let item = message.content.split(`+add ${quantity} `)[1].toLowerCase();
+
+            if (item === 'neons') {
+                if (!(author === '<@513303465053782022>')) {
+                    message.channel.send('You are not authorized to add Neons');
+                    return
+                }
+                else {
+                    quantity = quantity * 100;
+                }
+            }
+
+            checkKeyValidity(author, item);
+            let jsonData = readRecord('record');
+
+            jsonData[author][item] = parseInt(jsonData[author][item]) + quantity;
+            updateRecord('record', '.json', JSON.stringify(jsonData));
+            message.channel.send(`Successfully added ${parseInt(msg[1])} ${item} to your inventory`)
+        }
+
+        if (command === 'help') { message.channel.send(fs.readFileSync('help.txt', 'utf-8')) }
     }
     catch (error) {
         console.log(error)

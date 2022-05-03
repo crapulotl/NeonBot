@@ -1,0 +1,24 @@
+```
+NeonBot Guide:
+
++pay: 
+Transer Neons to someone.
+Add an "N" to send Neons or an "n" to send Neyonnies.
+(+pay @person 5N)
+(+pay @person 500n)
+
++give: 
+Give someone an item that you own.
+(+give @person 10 chicken)
+
++balance: 
+Check how much of an item you have.
+(+balance)
+(+balance all)
+(+balance rice)
+(+balance money)
+
++add:
+Add something to your inventory.
+(+add 5 crabs)
+```

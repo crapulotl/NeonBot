@@ -1,1 +1,1 @@
-{"command":["balance"], "length":1}
+{"command":["balance", "add", "help"], "length":3}
